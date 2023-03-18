@@ -1,0 +1,31 @@
+### Maven
+target/
+
+### Java
+*.class
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# virtual machine crash logs
+hs_err_pid*
+
+### JetBrains IntelliJ IDEA
+
+/out/
+
+# User-specific stuff:
+.idea/
+
+## File-based project format:
+*.ipr
+*.iws
+*.iml
+
+### Eclipse IDE
+.classpath
+.project
+.settings/
+
