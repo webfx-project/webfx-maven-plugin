@@ -10,6 +10,24 @@ The Maven project pom.xml file is updated to add the webfx-maven-plugin
 and is then bound to a build phase such as: validate, initialize or
 post processing stages such as prepare-package.
 
+## Building
+
+The plugin can be built and installed locally using Maven command:
+
+```
+    mvn clean install
+```
+
+## Trying out
+
+The plugin can be run (once installed see above) using the following Maven command:
+
+```
+    mvn -Dargs="--help" dev.webfx:webfx-maven-plugin:cli
+```
+
+To supply additional args, an comma is used to separate each command
+
 ## Configuration
 
 Configuration consists of calling the cli goal of the webfx-maven-plugin
