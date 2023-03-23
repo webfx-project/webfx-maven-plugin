@@ -1,7 +1,6 @@
 # WebFX Maven Plugin
 
-The WebFX Maven plugin allows WebFX Export command to be called from within 
-Maven build for updating configuration files.
+The WebFX Maven plugin allows WebFX Export command to be called from within Maven build for updating configuration files.
 
 ## How it works
 
@@ -64,8 +63,11 @@ the example below:
 ```
 
 The failOnError XML element can be set true to fail the build if
-the return code from the CLI command is not 0, or set to false
+the return code from the export command is not 0, or set to false
 to continue building.
+
+Note: Configuration parameters can be omitted for Maven defaults 
+and are illustrated above for completeness.
 
 ## License
 

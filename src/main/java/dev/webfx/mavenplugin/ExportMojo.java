@@ -15,7 +15,7 @@ import org.apache.maven.project.MavenProjectHelper;
 import dev.webfx.cli.mavenplugin.Export;
 
 @Mojo(name = "export")
-public class ExportGoal extends AbstractMojo{
+public class ExportMojo extends AbstractMojo{
 	
 	/**
 	 * projectDirectory from the maven pom.xml file to
@@ -55,11 +55,11 @@ public class ExportGoal extends AbstractMojo{
 	@Override
 	public void execute() throws MojoExecutionException, MojoFailureException {
 
-		getLog().info("-------- export parameters --------");
-		getLog().info("projectDirectory: " + projectDirectory);
-		getLog().info("targetDirectory: " + targetDirectory);
-		getLog().info("failOnError: " + failOnError);
-		getLog().info("--------------------------------");
+		getLog().debug("-------- export parameters --------");
+		getLog().debug("projectDirectory: " + projectDirectory);
+		getLog().debug("targetDirectory: " + targetDirectory);
+		getLog().debug("failOnError: " + failOnError);
+		getLog().debug("-----------------------------------");
 
 		final int result = Export.export(projectDirectory, targetDirectory);
 		if (failOnError && result != 0) {
