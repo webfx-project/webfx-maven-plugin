@@ -30,7 +30,7 @@ jobs:
 
       # Build all modules and deploy their SNAPSHOT artifacts to sonatype repository
       - name: Deploy this repository
-        run: mvn -B -P deploy
+        run: mvn -B deploy
         env:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
