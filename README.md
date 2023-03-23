@@ -1,14 +1,12 @@
 # WebFX Maven Plugin
 
-The WebFX Maven plugin allows WebFX Command line interface (CLI) 
-to be called from within Maven build for running tasks such as 
-updating dependency files.
+The WebFX Maven plugin allows WebFX Export command to be called from within 
+Maven build for updating configuration files.
 
 ## How it works
 
 The Maven project pom.xml file is updated to add the webfx-maven-plugin
-and is then bound to a build phase such as: validate, initialize or
-post processing stages such as prepare-package.
+and is then bound to a build phase such as pre-package.
 
 ## Building
 
@@ -23,20 +21,14 @@ The plugin can be built and installed locally using Maven command:
 The plugin can be run (once installed see above) using the following Maven command:
 
 ```
-    mvn -Dargs="--help" dev.webfx:webfx-maven-plugin:cli
+    mvn -DprojectDirectory="/project/path" -DtargetDirectory="/target/path"  dev.webfx:webfx-maven-plugin:export
 ```
-
-To supply additional args, an comma is used to separate each command
 
 ## Configuration
 
-Configuration consists of calling the cli goal of the webfx-maven-plugin
-in the example below during the initilize phase of the Maven build 
-lifecycle.
-
-The 'args' XML element below is where the 'webfx' command line arguments
-are placed. For example is the command line was: webfx --help 
-then the arguments would be as shown below.
+Configuration consists of calling the export goal of the webfx-maven-plugin
+during the pre-package phase of the Maven build lifecycle as illustrated in
+the example below:
 
 ```
   <build>
@@ -55,25 +47,21 @@ then the arguments would be as shown below.
                   <artifactId>webfx-maven-plugin</artifactId>
                   <executions>
                       <execution>
-                          <phase>initialize</phase>
+                          <phase>pre-package</phase>
                           <goals>
-                              <goal>cli</goal>
+                              <goal>export</goal>
                           </goals>
                       </execution>
                   </executions>
                   <configuration>
-                      <args>                
-                          <arg>--help</arg>
-                      </args>
+                      <projectDirectory>${basedir}</projectDirectory>                
+                      <targetDirectory>${project.build.directory}</targetDirectory>
                       <failOnError>true</failOnError>
                  </configuration>
             </plugin>
         </plugins>
     </build>
 ```
-
-For each argument supplied a new 'arg' tag should be added to the
-'args' element section.
 
 The failOnError XML element can be set true to fail the build if
 the return code from the CLI command is not 0, or set to false
