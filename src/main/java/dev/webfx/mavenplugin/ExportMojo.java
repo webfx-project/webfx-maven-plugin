@@ -61,6 +61,7 @@ public final class ExportMojo extends AbstractMojo {
 		File webfxXmlArtifactFile = new File(new File(targetDirectory), "webfx-artifact/webfx.xml");
 
 		// Calling the WebFX CLI ExportGoal.export() command to generate the webfx.xml artifact
+		LoggerUtil.configureWebFXLoggerForMaven(getLog());
 		int result = ExportGoal.export(projectDirectory, webfxXmlArtifactFile.getAbsolutePath());
 		if (failOnError && result != 0) {
 			throw new MojoFailureException("Failed to complete export, result=" + result);
