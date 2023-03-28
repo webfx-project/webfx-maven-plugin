@@ -20,6 +20,12 @@ public final class InitMojo extends AbstractMojo {
 	private String projectDirectory;
 
 	/**
+	 * artifact of the project to initialise (expressed as groupId:artifactId:version)
+	 */
+	@Parameter(property="artifact")
+	private String artifact;
+
+	/**
 	 * Stop executing build on error or ignore errors
 	 */
 	@Parameter(property="failOnError", defaultValue="true")
@@ -40,7 +46,8 @@ public final class InitMojo extends AbstractMojo {
 		getLog().debug("-----------------------------------");
 
 		try {
-			String artifact = prompter.prompt("Enter your artifact (expressed as groupId:artifactId:version)");
+			if (artifact == null || artifact.isEmpty())
+				artifact = prompter.prompt("Enter your artifact (expressed as groupId:artifactId:version)");
 			LoggerUtil.configureWebFXLoggerForMaven(getLog());
 			int result = InitGoal.init(projectDirectory, artifact);
 			if (failOnError && result != 0) {
