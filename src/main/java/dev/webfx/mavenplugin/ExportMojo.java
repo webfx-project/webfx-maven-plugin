@@ -1,10 +1,7 @@
 package dev.webfx.mavenplugin;
 
-import java.io.File;
-
+import dev.webfx.cli.mavenplugin.ExportGoal;
 import org.apache.maven.plugin.AbstractMojo;
-
-import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -12,10 +9,10 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
 
-import dev.webfx.cli.mavenplugin.Export;
+import java.io.File;
 
-@Mojo(name = "export")
-public class ExportMojo extends AbstractMojo{
+@Mojo(name = "export", aggregator = true) // aggregator = true because that goal doesn't need to be run on children
+public final class ExportMojo extends AbstractMojo {
 	
 	/**
 	 * projectDirectory from the maven pom.xml file to
@@ -50,10 +47,10 @@ public class ExportMojo extends AbstractMojo{
     private MavenProjectHelper projectHelper;
 
 	/**
-	 * Called when this goal is run, passes args into the command line interface
+	 * Called when this goal is run
 	 */
 	@Override
-	public void execute() throws MojoExecutionException, MojoFailureException {
+	public void execute() throws MojoFailureException {
 
 		getLog().debug("-------- export parameters --------");
 		getLog().debug("projectDirectory: " + projectDirectory);
@@ -61,12 +58,15 @@ public class ExportMojo extends AbstractMojo{
 		getLog().debug("failOnError: " + failOnError);
 		getLog().debug("-----------------------------------");
 
-		final int result = Export.export(projectDirectory, targetDirectory);
+		File webfxXmlArtifactFile = new File(new File(targetDirectory), "webfx-artifact/webfx.xml");
+
+		// Calling the WebFX CLI ExportGoal.export() command to generate the webfx.xml artifact
+		int result = ExportGoal.export(projectDirectory, webfxXmlArtifactFile.getAbsolutePath());
 		if (failOnError && result != 0) {
 			throw new MojoFailureException("Failed to complete export, result=" + result);
 		}
-		
-		projectHelper.attachArtifact(project, "xml", "webfx", 
-		    new File(new File(targetDirectory), "webfx-artifact/webfx.xml"));
+
+		// Attaching the generated artifact, so it will be included in the `install` phase, and eventually deployed
+		projectHelper.attachArtifact(project, "xml", "webfx", webfxXmlArtifactFile);
 	}
 }
