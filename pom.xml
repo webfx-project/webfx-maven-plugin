@@ -44,17 +44,26 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- Used by InitMojo to prompt the artifact if not provided -->
         <dependency>
             <groupId>org.codehaus.plexus</groupId>
             <artifactId>plexus-interactivity-api</artifactId>
             <version>1.1</version>
         </dependency>
 
-	    <dependency>
+        <!-- Used by UpdateMojo to implement the Artifact downloader -->
+        <dependency>
+            <groupId>org.apache.maven.shared</groupId>
+            <artifactId>maven-artifact-transfer</artifactId>
+            <version>0.13.1</version>
+        </dependency>
+
+        <dependency>
             <groupId>dev.webfx</groupId>
             <artifactId>webfx-cli</artifactId>
             <version>${webfx.version}</version>
         </dependency>
+
     </dependencies>
 
     <build>
