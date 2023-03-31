@@ -1,6 +1,8 @@
 package dev.webfx.mavenplugin;
 
-import dev.webfx.cli.mavenplugin.InitGoal;
+import dev.webfx.cli.commands.CommandWorkspace;
+import dev.webfx.cli.commands.Init;
+import dev.webfx.cli.core.Logger;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
@@ -48,14 +50,28 @@ public final class InitMojo extends AbstractMojo {
 		try {
 			if (artifact == null || artifact.isEmpty())
 				artifact = prompter.prompt("Enter your artifact (expressed as groupId:artifactId:version)");
+
 			LoggerUtil.configureWebFXLoggerForMaven(getLog());
-			int result = InitGoal.init(projectDirectory, artifact);
+
+			int result = init(projectDirectory, artifact);
+
 			if (failOnError && result != 0) {
 				throw new MojoFailureException("Failed to complete init, result=" + result);
 			}
 		} catch (PrompterException e) {
 			throw new RuntimeException(e);
 		}
-
 	}
+
+	public static int init(String projectDirectory, String artifact) {
+		try {
+			CommandWorkspace workspace = new CommandWorkspace(projectDirectory);
+			Init.execute(artifact, workspace);
+			return 0;
+		} catch (Exception e) {
+			Logger.log("ERROR: " + e.getMessage());
+			return -1;
+		}
+	}
+
 }

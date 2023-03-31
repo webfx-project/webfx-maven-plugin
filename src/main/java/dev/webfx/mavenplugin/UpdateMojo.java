@@ -1,6 +1,8 @@
 package dev.webfx.mavenplugin;
 
-import dev.webfx.cli.mavenplugin.UpdateGoal;
+import dev.webfx.cli.commands.CommandWorkspace;
+import dev.webfx.cli.commands.Update;
+import dev.webfx.cli.core.Logger;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -25,10 +27,22 @@ public class UpdateMojo extends AbstractMojo {
 	public void execute() throws MojoFailureException {
 
 		LoggerUtil.configureWebFXLoggerForMaven(getLog());
-		int result = UpdateGoal.update(projectDirectory);
+		int result = update(projectDirectory);
 
 		if (failOnError && result != 0) {
 			throw new MojoFailureException("Failed to complete update, result=" + result);
 		}
 	}
+
+	public static int update(String projectDirectory) {
+		try {
+			CommandWorkspace workspace = new CommandWorkspace(projectDirectory);
+			Update.execute(null, null, false, workspace);
+			return 0;
+		} catch (Exception e) {
+			Logger.log("ERROR: " + e.getMessage());
+			return -1;
+		}
+	}
+
 }
