@@ -2,6 +2,7 @@ package dev.webfx.mavenplugin;
 
 import dev.webfx.cli.commands.CommandWorkspace;
 import dev.webfx.cli.commands.Update;
+import dev.webfx.cli.core.ArtifactNotFoundException;
 import dev.webfx.cli.core.Logger;
 import dev.webfx.cli.core.MavenUtil;
 import org.apache.maven.artifact.repository.ArtifactRepository;
@@ -71,7 +72,7 @@ public class UpdateMojo extends AbstractMojo {
 	// ============================================ Artifact downloader ================================================
 	// ======= (faster than the default one in WebFX CLI as it doesn't require a Maven restart between 2 calls) ========
 
-	public void downloadArtifact(String groupId, String artifactId, String version, String classifier) {
+	public boolean downloadArtifact(String groupId, String artifactId, String version, String classifier) {
 		try {
 			ProjectBuildingRequest buildingRequest =
 					new DefaultProjectBuildingRequest(session.getProjectBuildingRequest());
@@ -85,8 +86,13 @@ public class UpdateMojo extends AbstractMojo {
 
 			artifactResolver.resolveArtifact(buildingRequest, artifactCoordinate);
 
+			return true;
 		} catch (ArtifactResolverException e) {
-			getLog().warn("Couldn't download artifact: " + e.getMessage());
+			String message = e.getMessage();
+			if (MavenUtil.isNotFoundArtifactError(message))
+				throw new ArtifactNotFoundException(message);
+			getLog().warn("Couldn't download artifact: " + message);
+			return false;
 		}
 	}
 
