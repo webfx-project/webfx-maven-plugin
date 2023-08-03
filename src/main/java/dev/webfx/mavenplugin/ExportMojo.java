@@ -11,6 +11,7 @@ import dev.webfx.lib.reusablestream.ReusableStream;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
+import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
@@ -23,7 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 
-@Mojo(name = "export", aggregator = true) // aggregator = true because that goal doesn't need to be run on children
+@Mojo(name = "export", defaultPhase = LifecyclePhase.INSTALL, aggregator = true) // aggregator = true because that goal doesn't need to be run on children
 public final class ExportMojo extends AbstractMojo {
 	
 	/**
@@ -197,9 +198,17 @@ public final class ExportMojo extends AbstractMojo {
 			// Adding a snapshot of the source packages, because they must be listed in executable GWT modules, and also
 			// because we want to be able to evaluate the <source-packages/> directive without having to download the sources
 			JavaSourceRootAnalyzer childMainJavaSourceRootAnalyzer = childModule.getMainJavaSourceRootAnalyzer();
-			childMainJavaSourceRootAnalyzer.getSourcePackages()
-					.sorted()
-					.forEach(p -> XmlUtil.appendElementWithTextContentIfNotAlreadyExists(childProjectElement, "source-packages/package", p, true));
+			if (childModule.getWebFxModuleFile().areSourcePackagesAutomaticallyExported()) {
+				childMainJavaSourceRootAnalyzer.getSourcePackages()
+						.sorted()
+						.forEach(p -> XmlUtil.appendElementWithTextContentIfNotAlreadyExists(childProjectElement, "source-packages/package", p, true));
+			}
+			// Same for the resource packages
+			if (childModule.getWebFxModuleFile().areResourcePackagesAutomaticallyExported()) {
+				childModule.getFileResourcePackages()
+						.sorted()
+						.forEach(p -> XmlUtil.appendElementWithTextContentIfNotAlreadyExists(childProjectElement, "resource-packages/package", p, true));
+			}
 			// Adding a snapshot of the detected used by sources modules (so the import doesn't need to download the sources).
 			if (childModule.hasSourceDirectory()) {
 				Node detectedUsedBySourceModulesNode = XmlUtil.appendIndentNode(document.createElement("used-by-source-modules"), childProjectElement, true);
