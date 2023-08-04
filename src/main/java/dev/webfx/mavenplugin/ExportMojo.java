@@ -198,7 +198,9 @@ public final class ExportMojo extends AbstractMojo {
 			// Adding a snapshot of the source packages, because they must be listed in executable GWT modules, and also
 			// because we want to be able to evaluate the <source-packages/> directive without having to download the sources
 			JavaSourceRootAnalyzer childMainJavaSourceRootAnalyzer = childModule.getMainJavaSourceRootAnalyzer();
-			if (childModule.getWebFxModuleFile().areSourcePackagesAutomaticallyExported()) {
+			if (childModule.getWebFxModuleFile().areSourcePackagesAutomaticallyExported()
+					// It's also necessary to list the source packages for GWT (as they are listed in module.gwt.xml)
+					|| childModule.getTarget().isPlatformSupported(Platform.GWT)) {
 				childMainJavaSourceRootAnalyzer.getSourcePackages()
 						.sorted()
 						.forEach(p -> XmlUtil.appendElementWithTextContentIfNotAlreadyExists(childProjectElement, "source-packages/package", p, true));
