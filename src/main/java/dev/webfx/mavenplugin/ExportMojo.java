@@ -23,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.function.Consumer;
 
 @Mojo(name = "export", defaultPhase = LifecyclePhase.INSTALL, aggregator = true) // aggregator = true because that goal doesn't need to be run on children
 public final class ExportMojo extends AbstractMojo {
@@ -59,6 +60,8 @@ public final class ExportMojo extends AbstractMojo {
     @Component
     private MavenProjectHelper projectHelper;
 
+	private static Consumer<String> LOGGER;
+
 	/**
 	 * Called when this goal is run
 	 */
@@ -70,6 +73,8 @@ public final class ExportMojo extends AbstractMojo {
 		getLog().debug("targetDirectory: " + targetDirectory);
 		getLog().debug("failOnError: " + failOnError);
 		getLog().debug("-----------------------------------");
+
+		LOGGER = getLog()::info;
 
 		File webfxXmlArtifactFile = new File(new File(targetDirectory), "webfx-artifact/webfx.xml");
 
@@ -134,6 +139,7 @@ public final class ExportMojo extends AbstractMojo {
 		if (!webFxModuleFile.generatesExportSnapshot())
 			return exportNodeWasPresent ? document : null;
 		// Exporting this and children modules in depth
+		LOGGER.accept("Exporting children modules");
 		final Node finalExportNode = exportNode;
 		DevProjectModule projectModule = webFxModuleFile.getProjectModule();
 		projectModule.getThisAndChildrenModulesInDepth()
@@ -141,13 +147,15 @@ public final class ExportMojo extends AbstractMojo {
 		// Adding usage to resolve if-uses-java-package and if-uses-java-class directives without downloading the sources
 		ReusableStream<ProjectModule> usageCoverage = projectModule.getDirectivesUsageCoverage();
 		// First pass: searching all the if-uses-java-package and if-java-classes directives and collecting the packages or classes that require to find the usage
+		LOGGER.accept("Collecting usages in directives");
 		Set<String> packagesListedInDirectives = new HashSet<>(); // To be populated
 		Set<String> classesListedInDirectives = new HashSet<>(); // To be populated
 		usageCoverage
 				.forEach(pm -> collectJavaPackagesAndClassesListedInDirectives(pm, packagesListedInDirectives, classesListedInDirectives));
-		//System.out.println("packagesListedInDirectives: " + packagesListedInDirectives);
-		//System.out.println("classesListedInDirectives: " + classesListedInDirectives);
+		LOGGER.accept("- packages listed in directives: " + packagesListedInDirectives);
+		LOGGER.accept("- classes listed in directives: " + classesListedInDirectives);
 		// Third pass: finding usage
+		LOGGER.accept("Reporting usages in export");
 		Element usagesElement = document.createElement("usages");
 		computeAndPopulateUsagesOfJavaPackagesAndClasses(usagesElement, usageCoverage,
 				convertSetToSortedList(packagesListedInDirectives),
@@ -166,6 +174,7 @@ public final class ExportMojo extends AbstractMojo {
 	}
 
 	private static void exportChildModuleProject(ProjectModule childModule, DevProjectModule projectModule, Node exportNode) {
+		//LOGGER.accept("Exporting child " + childModule.getName());
 		Document childDocument = childModule.getWebFxModuleFile().getDocument();
 		if (childDocument != null) {
 			Document document = exportNode.getOwnerDocument();
@@ -173,6 +182,7 @@ public final class ExportMojo extends AbstractMojo {
 			Element childProjectElement = (Element) document.importNode(childDocument.getDocumentElement(), true);
 			// Making the project name explicit (so the import knows what module we are talking about)
 			childProjectElement.setAttribute("name", childModule.getName());
+			childProjectElement.setAttribute("hasMainWebFxSourceDirectory", String.valueOf(childModule.hasMainWebFxSourceDirectory()));
 			// Removing tags that are not necessary for the import: <update-options>, <maven-pom-manual>
 			String[] unnecessaryTags = {"update-options", "maven-pom-manual"};
 			for (String tag : unnecessaryTags)
