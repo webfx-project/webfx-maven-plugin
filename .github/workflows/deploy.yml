@@ -14,24 +14,16 @@ jobs:
 
     steps:
 
-      # Set up the JDK and Maven settings.xml
-      - name: Set up JDK ${{ env.jdk-version }}
-        uses: actions/setup-java@v4
+      # Set up Maven and Java version and checkout repository
+      - name: Set up Maven
+        uses: s4u/setup-maven-action@v1.12.0
         with:
+          maven-version: 3.9.0
           distribution: 'zulu'
           java-version: ${{ env.jdk-version }}
           server-id: sonatype-deploy
           server-username: SONATYPE_USERNAME
           server-password: SONATYPE_PASSWORD
-
-      - name: Set up Maven
-        uses: s4u/setup-maven-action@v1.2.1
-        with:
-          maven-version: 3.9.0
-
-      # Checkout this repository
-      - name: Checkout this repository
-        uses: actions/checkout@v4
 
       # Build all modules and deploy their SNAPSHOT artifacts to sonatype repository
       - name: Deploy this repository
