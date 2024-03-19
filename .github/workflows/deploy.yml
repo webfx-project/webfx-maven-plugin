@@ -16,7 +16,7 @@ jobs:
 
       # Set up the JDK and Maven settings.xml
       - name: Set up JDK ${{ env.jdk-version }}
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: ${{ env.jdk-version }}
@@ -26,9 +26,9 @@ jobs:
 
       # Checkout this repository
       - name: Checkout this repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Deploy j2cl-maven-plugin-webfx
+      - name: Deploy webfx-maven-plugin
         run: mvn -B deploy
         env:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
