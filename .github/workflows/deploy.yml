@@ -24,9 +24,14 @@ jobs:
           server-username: SONATYPE_USERNAME
           server-password: SONATYPE_PASSWORD
 
+      - name: Set up Maven
+        uses: s4u/setup-maven-action@v1.2.1
+        with:
+          maven-version: 3.9.0
+
       # Checkout this repository
       - name: Checkout this repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # Build all modules and deploy their SNAPSHOT artifacts to sonatype repository
       - name: Deploy this repository
