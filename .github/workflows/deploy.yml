@@ -14,9 +14,9 @@ jobs:
 
     steps:
 
-      # Set up Maven and Java version and checkout repository
-      - name: Set up Maven
-        uses: s4u/setup-maven-action@v1.12.0
+      # Set up the JDK and Maven settings.xml
+      - name: Set up JDK ${{ env.jdk-version }}
+        uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: ${{ env.jdk-version }}
@@ -24,8 +24,11 @@ jobs:
           server-username: SONATYPE_USERNAME
           server-password: SONATYPE_PASSWORD
 
-      # Build all modules and deploy their SNAPSHOT artifacts to sonatype repository
-      - name: Deploy this repository
+      # Checkout this repository
+      - name: Checkout this repository
+        uses: actions/checkout@v3
+
+      - name: Deploy j2cl-maven-plugin-webfx
         run: mvn -B deploy
         env:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
