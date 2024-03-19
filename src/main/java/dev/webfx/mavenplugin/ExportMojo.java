@@ -148,8 +148,9 @@ public final class ExportMojo extends AbstractMojo {
 		ReusableStream<ProjectModule> usageCoverage = projectModule.getDirectivesUsageCoverage();
 		// First pass: searching all the if-uses-java-package and if-java-classes directives and collecting the packages or classes that require to find the usage
 		LOGGER.accept("Collecting usages in directives");
-		Set<String> packagesListedInDirectives = new HashSet<>(); // To be populated
-		Set<String> classesListedInDirectives = new HashSet<>(); // To be populated
+		// We initialise the packages and classes with those always used by the WebFX CLI (hardcoded in the code)
+		Set<String> packagesListedInDirectives = new HashSet<>(List.of("java.time", "java.text", "java.lang.ref", "java.util.regex", "netscape.javascript"));
+		Set<String> classesListedInDirectives = new HashSet<>(List.of("java.io.EOFException", "java.util.ServiceLoader", "java.util.Properties"));
 		usageCoverage
 				.forEach(pm -> collectJavaPackagesAndClassesListedInDirectives(pm, packagesListedInDirectives, classesListedInDirectives));
 		LOGGER.accept("- packages listed in directives: " + packagesListedInDirectives);
