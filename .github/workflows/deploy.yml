@@ -16,7 +16,7 @@ jobs:
 
       # Set up the JDK and Maven settings.xml
       - name: Set up JDK ${{ env.jdk-version }}
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: ${{ env.jdk-version }}
