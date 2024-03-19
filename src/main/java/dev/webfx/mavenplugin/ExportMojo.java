@@ -182,6 +182,7 @@ public final class ExportMojo extends AbstractMojo {
 			Element childProjectElement = (Element) document.importNode(childDocument.getDocumentElement(), true);
 			// Making the project name explicit (so the import knows what module we are talking about)
 			childProjectElement.setAttribute("name", childModule.getName());
+			childProjectElement.setAttribute("hasMainJavaSourceDirectory", String.valueOf(childModule.hasMainJavaSourceDirectory()));
 			childProjectElement.setAttribute("hasMainWebFxSourceDirectory", String.valueOf(childModule.hasMainWebFxSourceDirectory()));
 			// Removing tags that are not necessary for the import: <update-options>, <maven-pom-manual>
 			String[] unnecessaryTags = {"update-options", "maven-pom-manual"};
