@@ -3,8 +3,8 @@ package dev.webfx.mavenplugin;
 import dev.webfx.cli.commands.CommandWorkspace;
 import dev.webfx.cli.core.Module;
 import dev.webfx.cli.core.*;
-import dev.webfx.cli.modulefiles.DevWebFxModuleFile;
 import dev.webfx.cli.modulefiles.ExportedWebFxModuleFile;
+import dev.webfx.cli.modulefiles.abstr.WebFxModuleFile;
 import dev.webfx.cli.util.textfile.TextFileReaderWriter;
 import dev.webfx.cli.util.xml.XmlUtil;
 import dev.webfx.lib.reusablestream.ReusableStream;
@@ -112,7 +112,7 @@ public final class ExportMojo extends AbstractMojo {
 			CommandWorkspace workspace = new CommandWorkspace(projectDirectory);
 			Path artifactPath = Path.of(webfxXmlArtifactPath);
 			Files.createDirectories(artifactPath.getParent());
-			DevWebFxModuleFile webFxModuleFile = workspace.getWorkingDevProjectModule().getWebFxModuleFile();
+			WebFxModuleFile webFxModuleFile = workspace.getWorkingDevProjectModule().getWebFxModuleFile();
 			Document document = exportDocument(webFxModuleFile);
 			if (document != null) {
 				TextFileReaderWriter.writeTextFile(XmlUtil.formatXmlText(document), artifactPath);
@@ -126,7 +126,7 @@ public final class ExportMojo extends AbstractMojo {
 		}
 	}
 
-	private static Document exportDocument(DevWebFxModuleFile webFxModuleFile) {
+	private static Document exportDocument(WebFxModuleFile webFxModuleFile) {
 		Document document = webFxModuleFile.getDocument();
 		Node exportNode = XmlUtil.lookupNode(document, EXPORT_SNAPSHOT_TAG);
 		boolean exportNodeWasPresent = exportNode != null;
@@ -141,7 +141,7 @@ public final class ExportMojo extends AbstractMojo {
 		// Exporting this and children modules in depth
 		LOGGER.accept("Exporting children modules");
 		final Node finalExportNode = exportNode;
-		DevProjectModule projectModule = webFxModuleFile.getProjectModule();
+		ProjectModule projectModule = webFxModuleFile.getProjectModule();
 		projectModule.getThisAndChildrenModulesInDepth()
 				.forEach(pm -> exportChildModuleProject(pm, projectModule, finalExportNode));
 		// Adding usage to resolve if-uses-java-package and if-uses-java-class directives without downloading the sources
@@ -174,7 +174,7 @@ public final class ExportMojo extends AbstractMojo {
 		return list;
 	}
 
-	private static void exportChildModuleProject(ProjectModule childModule, DevProjectModule projectModule, Node exportNode) {
+	private static void exportChildModuleProject(ProjectModule childModule, ProjectModule projectModule, Node exportNode) {
 		//LOGGER.accept("Exporting child " + childModule.getName());
 		Document childDocument = childModule.getWebFxModuleFile().getDocument();
 		if (childDocument != null) {
@@ -212,7 +212,7 @@ public final class ExportMojo extends AbstractMojo {
 			JavaSourceRootAnalyzer childMainJavaSourceRootAnalyzer = childModule.getMainJavaSourceRootAnalyzer();
 			if (childModule.getWebFxModuleFile().areSourcePackagesAutomaticallyExported()
 					// It's also necessary to list the source packages for GWT (as they are listed in module.gwt.xml)
-					|| childModule.getTarget().isPlatformSupported(Platform.GWT)) {
+					|| childModule.getTarget().isPlatformSupported(Platform.GWT)) { // TODO: check if it works with -gwt-j2cl modules (ex: charba)
 				childMainJavaSourceRootAnalyzer.getSourcePackages()
 						.sorted()
 						.forEach(p -> XmlUtil.appendElementWithTextContentIfNotAlreadyExists(childProjectElement, "source-packages/package", p, true));
