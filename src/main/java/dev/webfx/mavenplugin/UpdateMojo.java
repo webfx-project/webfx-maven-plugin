@@ -2,6 +2,7 @@ package dev.webfx.mavenplugin;
 
 import dev.webfx.cli.commands.CommandWorkspace;
 import dev.webfx.cli.commands.Update;
+import dev.webfx.cli.commands.UpdateTasks;
 import dev.webfx.cli.core.ArtifactNotFoundException;
 import dev.webfx.cli.core.Logger;
 import dev.webfx.cli.core.MavenUtil;
@@ -60,7 +61,7 @@ public class UpdateMojo extends AbstractMojo {
 
 		try {
 			CommandWorkspace workspace = new CommandWorkspace(projectDirectory);
-			Update.execute(null, null, false, workspace);
+			Update.execute(false, new UpdateTasks(), false, workspace);
 		} catch (Exception e) {
 			if (failOnError) {
 				throw new MojoFailureException("Failed to complete update: " + e.getMessage());

@@ -16,7 +16,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectHelper;
-import org.w3c.dom.*;
+import org.dom4j.*;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -128,22 +128,24 @@ public final class ExportMojo extends AbstractMojo {
 
 	private static Document exportDocument(WebFxModuleFile webFxModuleFile) {
 		Document document = webFxModuleFile.getDocument();
-		Node exportNode = XmlUtil.lookupNode(document, EXPORT_SNAPSHOT_TAG);
-		boolean exportNodeWasPresent = exportNode != null;
-		if (exportNode != null) {
-			XmlUtil.removeChildren(exportNode);
-			removeNodeAndPreviousCommentsOrBlankTexts(exportNode);
-			XmlUtil.removeNode(exportNode);
-		} else
-			exportNode = document.createElement(EXPORT_SNAPSHOT_TAG);
+		Element rootElement = document.getRootElement();
+		Element exportElement = XmlUtil.lookupElement(rootElement, EXPORT_SNAPSHOT_TAG);
+		boolean exportNodeWasPresent = exportElement != null;
+		if (exportElement != null) {
+			XmlUtil.removeChildren(exportElement);
+			removeNodeAndPreviousCommentsOrBlankTexts(exportElement);
+			XmlUtil.removeNode(exportElement);
+		} else {
+			exportElement = XmlUtil.createElement(EXPORT_SNAPSHOT_TAG, rootElement);
+		}
 		if (!webFxModuleFile.generatesExportSnapshot())
 			return exportNodeWasPresent ? document : null;
 		// Exporting this and children modules in depth
 		LOGGER.accept("Exporting children modules");
-		final Node finalExportNode = exportNode;
+		final Element finalExportElement = exportElement;
 		ProjectModule projectModule = webFxModuleFile.getProjectModule();
 		projectModule.getThisAndChildrenModulesInDepth()
-				.forEach(pm -> exportChildModuleProject(pm, projectModule, finalExportNode));
+				.forEach(pm -> exportChildModuleProject(pm, projectModule, finalExportElement, document));
 		// Adding usage to resolve if-uses-java-package and if-uses-java-class directives without downloading the sources
 		ReusableStream<ProjectModule> usageCoverage = projectModule.getDirectivesUsageCoverage();
 		// First pass: searching all the if-uses-java-package and if-java-classes directives and collecting the packages or classes that require to find the usage
@@ -157,14 +159,14 @@ public final class ExportMojo extends AbstractMojo {
 		LOGGER.accept("- classes listed in directives: " + classesListedInDirectives);
 		// Third pass: finding usage
 		LOGGER.accept("Reporting usages in export");
-		Element usagesElement = document.createElement("usages");
+		Element usagesElement = XmlUtil.createElement("usages", rootElement);
 		computeAndPopulateUsagesOfJavaPackagesAndClasses(usagesElement, usageCoverage,
 				convertSetToSortedList(packagesListedInDirectives),
 				convertSetToSortedList(classesListedInDirectives));
-		if (usagesElement.hasChildNodes())
-			XmlUtil.appendIndentNode(usagesElement, exportNode, true);
-		XmlUtil.appendIndentNode(document.createComment(EXPORT_SECTION_COMMENT), document.getDocumentElement(), true);
-		XmlUtil.appendIndentNode(exportNode, document.getDocumentElement(), true);
+		if (usagesElement.nodeCount() > 0)
+			XmlUtil.appendIndentNode(usagesElement, exportElement, true);
+		XmlUtil.appendIndentNode(DocumentHelper.createComment(EXPORT_SECTION_COMMENT), rootElement, true);
+		XmlUtil.appendIndentNode(exportElement, rootElement, true);
 		return document;
 	}
 
@@ -174,26 +176,25 @@ public final class ExportMojo extends AbstractMojo {
 		return list;
 	}
 
-	private static void exportChildModuleProject(ProjectModule childModule, ProjectModule projectModule, Node exportNode) {
-		//LOGGER.accept("Exporting child " + childModule.getName());
+	private static void exportChildModuleProject(ProjectModule childModule, ProjectModule projectModule, Element exportElement, Document exportDocument) {
+		LOGGER.accept("Exporting child " + childModule.getName());
 		Document childDocument = childModule.getWebFxModuleFile().getDocument();
 		if (childDocument != null) {
-			Document document = exportNode.getOwnerDocument();
 			// Duplicating the xml element, so it can be copied into <export-snapshot/>
-			Element childProjectElement = (Element) document.importNode(childDocument.getDocumentElement(), true);
+			Element childProjectElement = importElement(childDocument.getRootElement(), exportDocument);
 			// Making the project name explicit (so the import knows what module we are talking about)
-			childProjectElement.setAttribute("name", childModule.getName());
-			childProjectElement.setAttribute("hasMainJavaSourceDirectory", String.valueOf(childModule.hasMainJavaSourceDirectory()));
-			childProjectElement.setAttribute("hasMainWebFxSourceDirectory", String.valueOf(childModule.hasMainWebFxSourceDirectory()));
+			childProjectElement.addAttribute("name", childModule.getName());
+			childProjectElement.addAttribute("hasMainJavaSourceDirectory", String.valueOf(childModule.hasMainJavaSourceDirectory()));
+			childProjectElement.addAttribute("hasMainWebFxSourceDirectory", String.valueOf(childModule.hasMainWebFxSourceDirectory()));
 			// Removing tags that are not necessary for the import: <update-options>, <maven-pom-manual>
 			String[] unnecessaryTags = {"update-options", "maven-pom-manual"};
 			for (String tag : unnecessaryTags)
 				removeNodeAndPreviousCommentsOrBlankTexts(XmlUtil.lookupNode(childProjectElement, tag));
 			// Replacing the <modules/> section with the effective modules (so the import doesn't need to download the pom)
-			Node modulesNode = XmlUtil.lookupNode(childProjectElement, "modules");
-			if (modulesNode != null) {
-				XmlUtil.removeChildren(modulesNode);
-				childModule.getChildrenModules().forEach(m -> XmlUtil.appendElementWithTextContent(modulesNode, "module", m.getName()));
+			Element modulesElement = XmlUtil.lookupElement(childProjectElement, "modules");
+			if (modulesElement != null) {
+				XmlUtil.removeChildren(modulesElement);
+				childModule.getChildrenModules().forEach(m -> XmlUtil.appendElementWithTextContent(modulesElement, "module", m.getName()));
 			}
 			// Trying to export the packages for the third-party libraries (so the import doesn't need to download their sources)
 			new ExportedWebFxModuleFile(projectModule, childProjectElement)
@@ -225,7 +226,7 @@ public final class ExportMojo extends AbstractMojo {
 			}
 			// Adding a snapshot of the detected used by sources modules (so the import doesn't need to download the sources).
 			if (childModule.hasSourceDirectory()) {
-				Node detectedUsedBySourceModulesNode = XmlUtil.appendIndentNode(document.createElement("used-by-source-modules"), childProjectElement, true);
+				Element detectedUsedBySourceModulesNode = XmlUtil.appendIndentNode(XmlUtil.createElement("used-by-source-modules", exportElement), childProjectElement, true);
 				childMainJavaSourceRootAnalyzer.getDetectedByCodeAnalyzerSourceDependencies()
 						.map(ModuleDependency::getDestinationModule)
 						.map(Module::getName)
@@ -236,7 +237,7 @@ public final class ExportMojo extends AbstractMojo {
 			childMainJavaSourceRootAnalyzer.getUsedRequiredJavaServices().forEach(js -> XmlUtil.appendElementWithTextContentIfNotAlreadyExists(childProjectElement, "used-services/required-service", js, true));
 			// Adding a snapshot of the used optional java services
 			childMainJavaSourceRootAnalyzer.getUsedOptionalJavaServices().forEach(js -> XmlUtil.appendElementWithTextContentIfNotAlreadyExists(childProjectElement, "used-services/optional-service", js, true));
-			XmlUtil.appendIndentNode(childProjectElement, exportNode, true);
+			XmlUtil.appendIndentNode(childProjectElement, exportElement, true);
 		}
 	}
 
@@ -257,7 +258,7 @@ public final class ExportMojo extends AbstractMojo {
 			// Collecting element with matching attributes
 			packagesOrClassesListedInDirectives.addAll(
 					XmlUtil.nodeListToAttributeValueList(
-							XmlUtil.lookupNodeList(moduleElement, packages ? "//*[@if-uses-java-package]" : "//*[@if-uses-java-class]")
+							XmlUtil.lookupElementList(moduleElement, packages ? "//*[@if-uses-java-package]" : "//*[@if-uses-java-class]")
 							, packages ? "if-uses-java-package" : "if-uses-java-class"
 					)
 			);
@@ -289,18 +290,66 @@ public final class ExportMojo extends AbstractMojo {
 		return isPackage ? pm.getMainJavaSourceRootAnalyzer().usesJavaPackage(packageOrClassToFindUsage) : pm.getMainJavaSourceRootAnalyzer().usesJavaClass(packageOrClassToFindUsage);
 	}
 
+	// TODO: move these utility methods in XmlUtil
+
 	private static void removeNodeAndPreviousCommentsOrBlankTexts(Node node) {
 		if (node != null)
 			while (true) {
-				Node previousSibling = node.getPreviousSibling();
+				Node previousSibling = getPreviousSibling(node);
 				if (previousSibling instanceof Comment ||
-						previousSibling instanceof Text && previousSibling.getTextContent().isBlank())
+					previousSibling instanceof Text && previousSibling.getText().isBlank())
 					XmlUtil.removeNode(previousSibling);
 				else {
 					XmlUtil.removeNode(node);
 					break;
 				}
 			}
+	}
+
+	private static Node getPreviousSibling(Node node) {
+		Element parentNode = node.getParent();
+		if (parentNode != null) {
+			List<Node> siblings = parentNode.content();
+			for (int i = 0; i < siblings.size(); i++) {
+				if (siblings.get(i).equals(node)) {
+					if (i > 0) {
+						return siblings.get(i - 1);
+					}
+					break;
+				}
+			}
+		}
+		return null;
+	}
+
+	private static Element importElement(Element sourceElement, Document exportDocument) {
+		return (Element) importNode(sourceElement, XmlUtil.createElement(sourceElement.getName(), exportDocument.getRootElement()));
+	}
+
+	private static Node importNode(Node sourceNode, Element targetElement) {
+		if (sourceNode instanceof Element) {
+			Element sourceElement = (Element) sourceNode;
+			//Element targetElement = exportElement.addElement(sourceElement.getName());
+
+			// Copy attributes
+			sourceElement.attributes().forEach(attribute ->
+					targetElement.addAttribute(attribute.getQName(), attribute.getValue())
+			);
+
+			// Copy child nodes recursively
+			sourceElement.content().forEach(sourceChild ->
+					targetElement.add(importNode(sourceChild, XmlUtil.createElement(sourceElement.getName(), targetElement)))
+			);
+			return targetElement;
+		} else if (sourceNode instanceof Text) {
+			return DocumentHelper.createText(sourceNode.getText());
+		} else if (sourceNode instanceof Comment) {
+			return DocumentHelper.createComment(sourceNode.getText());
+		} else if (sourceNode instanceof CDATA) {
+			return DocumentHelper.createCDATA(sourceNode.getText());
+		}
+		// Handle other node types if necessary
+		throw new IllegalArgumentException("Unsupported node " + sourceNode);
 	}
 
 }
