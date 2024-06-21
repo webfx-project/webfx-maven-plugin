@@ -181,7 +181,8 @@ public final class ExportMojo extends AbstractMojo {
 		Document childDocument = childModule.getWebFxModuleFile().getDocument();
 		if (childDocument != null) {
 			// Duplicating the xml element, so it can be copied into <export-snapshot/>
-			Element childProjectElement = importElement(childDocument.getRootElement(), exportDocument);
+			Element sourceElement = childDocument.getRootElement();
+			Element childProjectElement = XmlUtil.copyElement(sourceElement, exportDocument);
 			// Making the project name explicit (so the import knows what module we are talking about)
 			childProjectElement.addAttribute("name", childModule.getName());
 			childProjectElement.addAttribute("hasMainJavaSourceDirectory", String.valueOf(childModule.hasMainJavaSourceDirectory()));
@@ -320,36 +321,6 @@ public final class ExportMojo extends AbstractMojo {
 			}
 		}
 		return null;
-	}
-
-	private static Element importElement(Element sourceElement, Document exportDocument) {
-		return (Element) importNode(sourceElement, XmlUtil.createElement(sourceElement.getName(), exportDocument.getRootElement()));
-	}
-
-	private static Node importNode(Node sourceNode, Element targetElement) {
-		if (sourceNode instanceof Element) {
-			Element sourceElement = (Element) sourceNode;
-			//Element targetElement = exportElement.addElement(sourceElement.getName());
-
-			// Copy attributes
-			sourceElement.attributes().forEach(attribute ->
-					targetElement.addAttribute(attribute.getQName(), attribute.getValue())
-			);
-
-			// Copy child nodes recursively
-			sourceElement.content().forEach(sourceChild ->
-					targetElement.add(importNode(sourceChild, XmlUtil.createElement(sourceElement.getName(), targetElement)))
-			);
-			return targetElement;
-		} else if (sourceNode instanceof Text) {
-			return DocumentHelper.createText(sourceNode.getText());
-		} else if (sourceNode instanceof Comment) {
-			return DocumentHelper.createComment(sourceNode.getText());
-		} else if (sourceNode instanceof CDATA) {
-			return DocumentHelper.createCDATA(sourceNode.getText());
-		}
-		// Handle other node types if necessary
-		throw new IllegalArgumentException("Unsupported node " + sourceNode);
 	}
 
 }
