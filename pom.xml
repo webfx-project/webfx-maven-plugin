@@ -30,11 +30,6 @@
         </repository>
     </repositories>
 
-    <properties>
-        <!-- Java 13 is required because of the use of FileSystems.newFileSystem() in the code -->
-        <java.version>13</java.version>
-    </properties>
-
     <dependencies>
 
         <dependency>
