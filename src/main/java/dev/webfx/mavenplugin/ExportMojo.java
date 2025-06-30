@@ -81,12 +81,15 @@ public final class ExportMojo extends AbstractMojo {
 		// Calling the export() method that generates the webfx.xml artifact
 		LoggerUtil.configureWebFXLoggerForMaven(getLog());
 		int result = export(projectDirectory, webfxXmlArtifactFile.getAbsolutePath());
-		if (failOnError && result != 0) {
+		if (failOnError && result < 0) {
 			throw new MojoFailureException("Failed to complete export, result=" + result);
 		}
 
 		// Attaching the generated artifact, so it will be included in the `install` phase, and eventually deployed
 		projectHelper.attachArtifact(project, "xml", "webfx", webfxXmlArtifactFile);
+		if (result == 1) { // Logging when webfx.xml was generated
+			getLog().info("Attached generated " + webfxXmlArtifactFile.getName() + " for later deploy of " + project.getArtifactId());
+		}
 	}
 
 	private final static String EXPORT_SNAPSHOT_TAG = "export-snapshot";
@@ -116,10 +119,11 @@ public final class ExportMojo extends AbstractMojo {
 			Document document = exportDocument(webFxModuleFile);
 			if (document != null) {
 				TextFileReaderWriter.writeTextFile(XmlUtil.formatXmlText(document), artifactPath);
+				return 1;
 			} else {
 				Files.copy(webFxModuleFile.getModuleFilePath(), artifactPath, StandardCopyOption.REPLACE_EXISTING);
+				return 0;
 			}
-			return 0;
 		} catch (Exception e) {
 			Logger.log("ERROR: " + e.getMessage());
 			return -1;
