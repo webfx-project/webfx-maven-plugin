@@ -87,9 +87,7 @@ public final class ExportMojo extends AbstractMojo {
 
 		// Attaching the generated artifact, so it will be included in the `install` phase, and eventually deployed
 		projectHelper.attachArtifact(project, "xml", "webfx", webfxXmlArtifactFile);
-		if (result == 1) { // Logging when webfx.xml was generated
-			getLog().info("Attached generated " + webfxXmlArtifactFile.getName() + " for later deploy of " + project.getArtifactId());
-		}
+		getLog().info("Attached " + webfxXmlArtifactFile.getName() + " to module " + project.getArtifactId() + " for later deploy");
 	}
 
 	private final static String EXPORT_SNAPSHOT_TAG = "export-snapshot";
@@ -154,7 +152,7 @@ public final class ExportMojo extends AbstractMojo {
 		ReusableStream<ProjectModule> usageCoverage = projectModule.getDirectivesUsageCoverage();
 		// First pass: searching all the if-uses-java-package and if-java-classes directives and collecting the packages or classes that require to find the usage
 		LOGGER.accept("Collecting usages in directives");
-		// We initialise the packages and classes with those always used by the WebFX CLI (hardcoded in the code)
+		// We initialize the packages and classes with those always used by the WebFX CLI (hardcoded in the code)
 		Set<String> packagesListedInDirectives = new HashSet<>(List.of("java.time", "java.text", "java.lang.ref", "java.util.regex", "netscape.javascript"));
 		Set<String> classesListedInDirectives = new HashSet<>(List.of("java.io.EOFException", "java.util.ServiceLoader", "java.util.Properties"));
 		usageCoverage
@@ -184,7 +182,7 @@ public final class ExportMojo extends AbstractMojo {
 		LOGGER.accept("Exporting child " + childModule.getName());
 		Document childDocument = childModule.getWebFxModuleFile().getDocument();
 		if (childDocument != null) {
-			// Duplicating the xml element, so it can be copied into <export-snapshot/>
+			// Duplicating the XML element, so it can be copied into <export-snapshot/>
 			Element sourceElement = childDocument.getRootElement();
 			Element childProjectElement = XmlUtil.copyElement(sourceElement, exportDocument);
 			// Making the project name explicit (so the import knows what module we are talking about)
@@ -260,7 +258,7 @@ public final class ExportMojo extends AbstractMojo {
 							XmlUtil.lookupNodeList(moduleElement, packages ? "//if-uses-java-package" : "//if-uses-java-class")
 					)
 			);
-			// Collecting element with matching attributes
+			// Collecting elements with matching attributes
 			packagesOrClassesListedInDirectives.addAll(
 					XmlUtil.nodeListToAttributeValueList(
 							XmlUtil.lookupElementList(moduleElement, packages ? "//*[@if-uses-java-package]" : "//*[@if-uses-java-class]")
@@ -280,8 +278,8 @@ public final class ExportMojo extends AbstractMojo {
 				.forEach(packageOrClassToFindUsage -> {
 					ReusableStream<ProjectModule> modulesUsingJavaPackagesOrClasses = searchScope
 							//.flatMap(ProjectModule::getThisAndTransitiveModules) // already done, no?
-							.filter(ProjectModule.class::isInstance)
-							.map(ProjectModule.class::cast)
+							//.filter(ProjectModule.class::isInstance)
+							//.map(ProjectModule.class::cast)
 							.distinct()
 							.filter(m -> usesJavaPackageOrClass(m, packageOrClassToFindUsage, packages))
 							.sorted();
