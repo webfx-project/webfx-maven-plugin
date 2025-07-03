@@ -55,7 +55,7 @@
 
         <dependency>
             <groupId>dev.webfx</groupId>
-            <artifactId>webfx-cli</artifactId>
+            <artifactId>webfx-cli-fat</artifactId>
             <version>${webfx.version}</version>
         </dependency>
 
