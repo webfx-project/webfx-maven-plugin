@@ -8,6 +8,7 @@ import dev.webfx.cli.modulefiles.abstr.WebFxModuleFile;
 import dev.webfx.cli.util.textfile.TextFileReaderWriter;
 import dev.webfx.cli.util.xml.XmlUtil;
 import dev.webfx.lib.reusablestream.ReusableStream;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
@@ -54,7 +55,10 @@ public final class ExportMojo extends AbstractMojo {
 	@Parameter(readonly = true, defaultValue = "${project}" )
     private MavenProject project;
 
-    /**
+	@Component
+	private MavenSession session;
+
+	/**
      * Maven project helper injection
      */
     @Component
@@ -76,6 +80,22 @@ public final class ExportMojo extends AbstractMojo {
 
 		LOGGER = getLog()::info;
 
+		// This plugin is called either 1) automatically by the profile auto-plugin-webfx declared in webfx-parent, or
+		// 2) explicitly through the export goal (dev.webfx:webfx-maven-plugin:0.1.0-SNAPSHOT:export). We never skip
+		// 2) but we skip 1) when it's not the `deploy` goal. Indeed, the purpose of the automatic call is to generate
+		// the webfx.xml export for its deployment in the `deploy` phase. It's important to generate the file before the
+		// `deploy` phase (i.e., in the `install` phase) to ensure it is attached before central-publishing-maven-plugin
+		// is called. But it's not necessary (and even not wished as this is time-consuming) to generate it if it's not
+		// followed by a deployment (ex: if we invoke `install` and not `deploy`).
+		boolean autoSkip = session.getRequest().getGoals().stream().noneMatch(goal ->
+			goal.endsWith("deploy") // case 1) => don't skip only if in the `deploy` phase
+			|| goal.endsWith("export") // case 2) => never skip
+		);
+		if (autoSkip) {
+			getLog().info("Skipping export because not in the `deploy` goal");
+			return;
+		}
+
 		File webfxXmlArtifactFile = new File(new File(targetDirectory), "webfx-artifact/webfx.xml");
 
 		// Calling the export() method that generates the webfx.xml artifact
@@ -85,7 +105,7 @@ public final class ExportMojo extends AbstractMojo {
 			throw new MojoFailureException("Failed to complete export, result=" + result);
 		}
 
-		// Attaching the generated artifact, so it will be included in the `install` phase, and eventually deployed
+		// Attaching the generated artifact, so it will be included in the `install` phase and eventually deployed
 		projectHelper.attachArtifact(project, "xml", "webfx", webfxXmlArtifactFile);
 		getLog().info("Attached " + webfxXmlArtifactFile.getName() + " to module " + project.getArtifactId() + " for later deploy");
 	}
