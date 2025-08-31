@@ -286,7 +286,7 @@ self.addEventListener("fetch", event => {
 
         // 4) Network fallback with logging (and lazy cache-as-you-go)
         try {
-            const networkResponse = await fetch(event.request);
+            const networkResponse = await fetchWithRetry(event.request);
             console.log("✅ Fetch succeeded: " + event.request.url + " (status " + networkResponse.status + ")");
             // If this resource is marked for lazy caching, store it now under its hash key
             try {
@@ -294,7 +294,7 @@ self.addEventListener("fetch", event => {
                     const manifestPath = toManifestPathFromRequest(event.request);
                     const knownHash = PATH_TO_HASH[manifestPath];
                     const info = knownHash ? HASH_TO_INFO[knownHash] : null;
-                    if (networkResponse && networkResponse.ok && info && info.preCache === false) {
+                    if (networkResponse && networkResponse.ok && info && info.preCache === false && !isRangeRequest(event.request)) {
                         const cache = await caches.open(CACHE_NAME);
                         await cache.put(toHashRequest(knownHash), networkResponse.clone());
                     }
@@ -314,3 +314,41 @@ self.addEventListener("fetch", event => {
         }
     })());
 });
+
+
+// Helper: detect Range requests (partial content)
+function isRangeRequest(request) {
+    try {
+        const h = request && request.headers && request.headers.get ? request.headers.get("range") : null;
+        return !!(h && h.trim());
+    } catch (e) {
+        return false;
+    }
+}
+
+// Helper: fetch with a fallback retry using a reconstructed Request and no-store cache mode
+async function fetchWithRetry(request) {
+    try {
+        return await fetch(request);
+    } catch (e1) {
+        try {
+            const init = {
+                method: request.method,
+                headers: request.headers,
+                mode: request.mode,
+                credentials: request.credentials,
+                cache: "no-store",
+                redirect: "follow",
+                integrity: request.integrity,
+                referrer: request.referrer,
+                referrerPolicy: request.referrerPolicy,
+                keepalive: request.method === "GET" ? true : undefined,
+                signal: request.signal
+            };
+            const retryReq = new Request(request.url, init);
+            return await fetch(retryReq);
+        } catch (e2) {
+            throw e1;
+        }
+    }
+}
