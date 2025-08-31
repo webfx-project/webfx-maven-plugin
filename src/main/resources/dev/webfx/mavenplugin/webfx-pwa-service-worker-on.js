@@ -294,9 +294,20 @@ self.addEventListener("fetch", event => {
                     const manifestPath = toManifestPathFromRequest(event.request);
                     const knownHash = PATH_TO_HASH[manifestPath];
                     const info = knownHash ? HASH_TO_INFO[knownHash] : null;
-                    if (networkResponse && networkResponse.ok && info && info.preCache === false && !isRangeRequest(event.request)) {
-                        const cache = await caches.open(CACHE_NAME);
-                        await cache.put(toHashRequest(knownHash), networkResponse.clone());
+                    const isRange = isRangeRequest(event.request);
+                    if (networkResponse && networkResponse.ok && info && info.preCache === false) {
+                        if (!isRange && networkResponse.status !== 206) {
+                            // Safe to cache the direct full response
+                            const cache = await caches.open(CACHE_NAME);
+                            await cache.put(toHashRequest(knownHash), networkResponse.clone());
+                        } else {
+                            // Partial content or Range request: background fetch full file once and cache it
+                            try {
+                                const p = backgroundFullFetchAndCache(manifestPath, knownHash);
+                                // Ensure background operation can complete
+                                event.waitUntil(p);
+                            } catch (_) { /* ignore */ }
+                        }
                     }
                 }
             } catch (e2) {
@@ -350,5 +361,25 @@ async function fetchWithRetry(request) {
         } catch (e2) {
             throw e1;
         }
+    }
+}
+
+// Helper: when a lazy asset was requested via Range or returned 206,
+// fetch the full file in the background and cache it by content hash.
+async function backgroundFullFetchAndCache(manifestPath, knownHash) {
+    try {
+        if (!knownHash) return;
+        const cache = await caches.open(CACHE_NAME);
+        // If already cached fully by hash, skip
+        const existing = await cache.match(toHashRequest(knownHash));
+        if (existing) return;
+        // Fetch the full resource without Range constraints
+        const fullReq = toScopedRequest(manifestPath);
+        const resp = await fetchWithRetry(fullReq);
+        if (resp && resp.ok && resp.status !== 206) {
+            await cache.put(toHashRequest(knownHash), resp.clone());
+        }
+    } catch (e) {
+        // best-effort: ignore errors
     }
 }
