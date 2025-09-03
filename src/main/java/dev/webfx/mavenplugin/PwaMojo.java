@@ -58,7 +58,7 @@ public final class PwaMojo extends AbstractMojo {
         boolean pwa = metaProperties.getProperty("pwa", "false").equals("true");
         getLog().info("PWA mode is " + (pwa ? "on" : "off"));
 
-        String templateResourceName = pwa ? "webfx-pwa-service-worker-on.js" : "webfx-pwa-service-worker-off.js";
+        String templateResourceName = pwa ? "pwa-service-worker-on.js" : "pwa-service-worker-off.js";
         try (InputStream is = getClass().getResourceAsStream(templateResourceName)) {
             if (is == null)
                 throw new FileNotFoundException("Template " + templateResourceName + " not found in Maven plugin resources");
@@ -100,12 +100,12 @@ public final class PwaMojo extends AbstractMojo {
                 String assetManifestJson = toJsonAssetObject(manifestMap);
 
                 String pwaManifestJson = "{\"mavenBuildTimestamp\": \"" + mavenBuildTimestamp + "\", \"assetManifest\": " + assetManifestJson + "}";
-                TextFileReaderWriter.writeTextFileIfNewOrModified(pwaManifestJson, gwtAppPath.resolve("webfx-pwa-asset.json"));
+                TextFileReaderWriter.writeTextFileIfNewOrModified(pwaManifestJson, gwtAppPath.resolve("pwa-asset.json"));
 
                 template = template.replace("const ASSET = {}", "const ASSET = " + assetManifestJson);
             }
 
-            TextFileReaderWriter.writeTextFileIfNewOrModified(template, gwtAppPath.resolve("webfx-pwa-service-worker.js"));
+            TextFileReaderWriter.writeTextFileIfNewOrModified(template, gwtAppPath.resolve("pwa-service-worker.js"));
         } catch (Exception e) {
             throw new MojoFailureException(e);
         }
@@ -119,6 +119,7 @@ public final class PwaMojo extends AbstractMojo {
                || name.endsWith(".svg")
                || name.endsWith(".png")
                || name.endsWith(".jpg")
+               || name.endsWith(".jpeg")
                || name.endsWith(".ttf")
                || name.endsWith(".mp3");
     }

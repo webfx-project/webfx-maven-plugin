@@ -169,7 +169,7 @@ self.addEventListener("fetch", event => {
                                     try {
                                         const cleanupPromise = (async () => {
                                             try {
-                                                const resp = await fetch("/webfx-pwa-asset.json", {cache: "no-cache"});
+                                                const resp = await fetch("/pwa-asset.json", {cache: "no-cache"});
                                                 if (resp && resp.ok) {
                                                     const json = await resp.json();
                                                     const newAsset = (json && (json.assetManifest || json)) || {};
@@ -182,7 +182,7 @@ self.addEventListener("fetch", event => {
                                                         console.log("🧹 No cached entries required cleaning for version change");
                                                     }
                                                 } else {
-                                                    console.log("ℹ️ Could not fetch /webfx-pwa-asset.json (status " + (resp && resp.status) + ")");
+                                                    console.log("ℹ️ Could not fetch /pwa-asset.json (status " + (resp && resp.status) + ")");
                                                 }
                                             } catch (eFetchMan) {
                                                 console.log("ℹ️ Error while fetching/processing new manifest: " + (eFetchMan && eFetchMan.message ? eFetchMan.message : eFetchMan));
