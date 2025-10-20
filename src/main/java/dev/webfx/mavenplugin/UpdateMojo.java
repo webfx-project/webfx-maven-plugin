@@ -3,7 +3,7 @@ package dev.webfx.mavenplugin;
 import dev.webfx.cli.commands.CommandWorkspace;
 import dev.webfx.cli.commands.Update;
 import dev.webfx.cli.commands.UpdateTasks;
-import dev.webfx.cli.core.ArtifactNotFoundException;
+import dev.webfx.cli.exceptions.ArtifactNotFoundException;
 import dev.webfx.cli.core.Logger;
 import dev.webfx.cli.core.MavenUtil;
 import org.apache.maven.artifact.repository.ArtifactRepository;
