@@ -2,7 +2,7 @@ package dev.webfx.mavenplugin;
 
 import dev.webfx.cli.util.textfile.TextFileReaderWriter;
 import dev.webfx.platform.meta.Meta;
-import dev.webfx.platform.util.gwtj2cl.GwtJ2clUtil;
+import dev.webfx.platform.util.elemental2.Elemental2Util;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -106,7 +106,7 @@ public final class PwaMojo extends AbstractMojo {
                 template = template.replace("const ASSET = {}", "const ASSET = " + assetManifestJson);
             }
 
-            TextFileReaderWriter.writeTextFileIfNewOrModified(template, gwtAppPath.resolve(GwtJ2clUtil.getPwaScriptUrl()));
+            TextFileReaderWriter.writeTextFileIfNewOrModified(template, gwtAppPath.resolve(Elemental2Util.getPwaScriptUrl()));
         } catch (Exception e) {
             throw new MojoFailureException(e);
         }
