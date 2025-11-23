@@ -14,7 +14,7 @@
     <artifactId>webfx-maven-plugin</artifactId>
     <packaging>maven-plugin</packaging>
     
-    <name>Webfx Maven Plugin</name>
+    <name>WebFX Maven Plugin</name>
  
     <repositories>
         <!-- For WebFX snapshots download (including webfx-parent) -->

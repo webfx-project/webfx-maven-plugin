@@ -111,21 +111,23 @@ public final class ExportMojo extends AbstractMojo {
 	}
 
 	private final static String EXPORT_SNAPSHOT_TAG = "export-snapshot";
-	private final static String EXPORT_SECTION_COMMENT = "\n" +
-			"\n" +
-			"     ******************************************************************************************************************* \n" +
-			"     ******************************* Section managed by WebFX (DO NOT EDIT MANUALLY) *********************************** \n" +
-			"     ******************************************************************************************************************* \n" +
-			"\n" +
-			"     <export-snapshot> allows a much faster import of this WebFX library into another project. It's a self-contained\n" +
-			"     image of this and children modules. All information required for the import of this library is present in this\n" +
-			"     single file. The export snapshot is optional, and a WebFX library that doesn't generate it can still be imported\n" +
-			"     into another project, but WebFX will then need to download all individual webfx.xml files for every children\n" +
-			"     modules, together with their pom and sources. Knowing that each download requires a maven invocation that takes\n" +
-			"     at least 3s (sometimes 10s or more), the export snapshot brings a significant performance improvement in the\n" +
-			"     import process.\n" +
-			"\n" +
-			"     ";
+	private final static String EXPORT_SECTION_COMMENT = """
+        
+        
+             *******************************************************************************************************************\s
+             ******************************* Section managed by WebFX (DO NOT EDIT MANUALLY) ***********************************\s
+             *******************************************************************************************************************\s
+        
+             <export-snapshot> allows a much faster import of this WebFX library into another project. It's a self-contained
+             image of this and children modules. All information required for the import of this library is present in this
+             single file. The export snapshot is optional, and a WebFX library that doesn't generate it can still be imported
+             into another project, but WebFX will then need to download all individual webfx.xml files for every children
+             modules, together with their pom and sources. Knowing that each download requires a maven invocation that takes
+             at least 3s (sometimes 10s or more), the export snapshot brings a significant performance improvement in the
+             import process.
+        
+       
+        """;
 
 	// This method is called by the WebFX Maven plugin
 	public static int export(String projectDirectory, String webfxXmlArtifactPath) {
