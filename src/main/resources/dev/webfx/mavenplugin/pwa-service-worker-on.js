@@ -46,32 +46,6 @@ function toHashRequest(hash) {
     return new Request(u);
 }
 
-// Remove any cached hash entries that are not present in the provided allowedHashes set
-async function deleteHashesNotIn(allowedHashes, cache) {
-    if (!cache) cache = await caches.open(CACHE_NAME)
-    const keys = await cache.keys();
-    let deletedCount = 0;
-    await Promise.all(keys.map(async (req) => {
-        // Only consider entries that were stored via toHashRequest(hash).
-        // We assume such entries end exactly with the hash (scope + hash) and that hash is a 64-char hex string (sha-256)
-        try {
-            const url = new URL(req.url);
-            const path = url.pathname || "";
-            // scope path + 64 hex chars
-            const scopePath = getScopePathname();
-            const suffix = path.startsWith(scopePath) ? path.substring(scopePath.length) : null;
-            const isHex64 = suffix && /^[a-f0-9]{64}$/i.test(suffix);
-            const hash = isHex64 ? suffix : null;
-            if (!hash) return;
-            if (!allowedHashes.has(hash)) {
-                const ok = await cache.delete(req);
-                if (ok) deletedCount++;
-            }
-        } catch (e) { /* ignore parse errors */ }
-    }));
-    return deletedCount;
-}
-
 function getPathFromRequest(request) {
     try {
         const url = new URL(request.url);
@@ -131,13 +105,48 @@ const reportProgress = async (completed = false) => {
     });
 };
 
+// Helper to check if critical assets are already in cache (for SW restarts)
+const checkCriticalAssets = async () => {
+    if (isCriticalDone) return true;
+    try {
+        const cache = await caches.open(CACHE_NAME);
+        const critical = Object.entries(HASH_TO_INFO).filter(([, info]) => info && info.strategy === 'CRITICAL');
+
+        // If no critical assets, we are done
+        if (critical.length === 0) {
+            isCriticalDone = true;
+            return true;
+        }
+
+        // Check if all exist in cache
+        const allCached = await Promise.all(critical.map(async ([hash]) => {
+            const req = toHashRequest(hash);
+            const match = await cache.match(req);
+            return !!match;
+        }));
+
+        if (allCached.every(Boolean)) {
+            isCriticalDone = true;
+            return true;
+        }
+    } catch (e) {
+        console.error("Error checking critical assets", e);
+    }
+    return false;
+};
+
 // Handle client messages
 self.addEventListener('message', event => {
     if (event.data && event.data.type === 'check_status') {
-        event.source.postMessage({
-            type: 'status',
-            criticalCompleted: isCriticalDone
-        });
+        (async () => {
+            if (!isCriticalDone) {
+                await checkCriticalAssets();
+            }
+            event.source.postMessage({
+                type: 'status',
+                criticalCompleted: isCriticalDone
+            });
+        })();
     }
 });
 
