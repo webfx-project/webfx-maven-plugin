@@ -1,11 +1,11 @@
 package dev.webfx.mavenplugin;
 
 import dev.webfx.cli.commands.CommandWorkspace;
+import dev.webfx.cli.core.DevProjectModule;
 import dev.webfx.cli.core.ProjectModule;
 import dev.webfx.cli.util.textfile.TextFileReaderWriter;
 import dev.webfx.cli.util.xml.XmlUtil;
 import dev.webfx.platform.meta.Meta;
-import dev.webfx.platform.util.elemental2.Elemental2Util;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -80,7 +80,7 @@ public final class PwaMojo extends AbstractMojo {
                 Map<String, String> assetStrategies = new HashMap<>();
                 try {
                     CommandWorkspace workspace = new CommandWorkspace(projectDirectory);
-                    ProjectModule projectModule = workspace.getWorkingDevProjectModule();
+                    DevProjectModule projectModule = workspace.getWorkingDevProjectModule();
                     if (projectModule != null) {
                         // dev.webfx.cli.core.ProjectModule returns a dom4j Document
                         org.dom4j.Document webfxXmlDoc = projectModule.getWebFxModuleFile().getDocument();
@@ -151,17 +151,13 @@ public final class PwaMojo extends AbstractMojo {
                && !name.endsWith(".txt"); // ignore text files
     }
 
-    private static String getStrategy(Path p, Map<String, String> assetStrategies) {
-        String pathStr = p.toString().replace('\\', '/');
-        if (pathStr.startsWith("/"))
-            pathStr = pathStr.substring(1);
-
-        if (assetStrategies.containsKey(pathStr)) {
-            return assetStrategies.get(pathStr);
+    private static String getStrategy(String path, Map<String, String> assetStrategies) {
+        if (assetStrategies.containsKey(path)) {
+            return assetStrategies.get(path);
         }
 
         // Automatically pre-cache GWT application file as CRITICAL
-        if (p.getFileName().toString().endsWith(".cache.js")) {
+        if (path.endsWith(".cache.js") || path.endsWith(".nocache.js")) {
             return "CRITICAL";
         }
 
@@ -242,7 +238,7 @@ public final class PwaMojo extends AbstractMojo {
             first = false;
             String path = "/" + e.getKey().toString().replace(java.io.File.separatorChar, '/');
             String hash = e.getValue();
-            String strategy = getStrategy(e.getKey(), assetStrategies);
+            String strategy = getStrategy(path, assetStrategies);
             long size = 0;
             long gzipSize = 0;
             try {
