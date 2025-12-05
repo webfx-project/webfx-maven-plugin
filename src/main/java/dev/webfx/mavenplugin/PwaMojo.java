@@ -101,6 +101,24 @@ public final class PwaMojo extends AbstractMojo {
                     getLog().warn("Failed to read webfx.xml for PWA configuration: " + e.getMessage());
                 }
 
+                // Auto-detect assets referenced in index.html and mark them as CRITICAL
+                Path indexHtmlPath = gwtAppPath.resolve("index.html");
+                if (Files.exists(indexHtmlPath)) {
+                    try {
+                        Set<String> referencedAssets = extractReferencedAssets(indexHtmlPath);
+                        for (String asset : referencedAssets) {
+                            // Only mark as CRITICAL if not already defined in webfx.xml
+                            if (!assetStrategies.containsKey(asset)) {
+                                assetStrategies.put(asset, "CRITICAL");
+                                getLog().debug("Auto-detected critical asset from index.html: " + asset);
+                            }
+                        }
+                        getLog().info("Auto-detected " + referencedAssets.size() + " critical assets from index.html");
+                    } catch (Exception e) {
+                        getLog().warn("Failed to parse index.html for asset references: " + e.getMessage());
+                    }
+                }
+
                 // Build asset manifest by scanning gwtAppPath for .html, .js, .css
                 Map<Path, String> manifestMap = new LinkedHashMap<>();
                 if (Files.isDirectory(gwtAppPath)) {
@@ -129,7 +147,6 @@ public final class PwaMojo extends AbstractMojo {
                 String assetManifestJson = toJsonAssetObject(manifestMap, assetStrategies, gwtAppPath, getLog());
 
                 // Embed asset manifest in index.html
-                Path indexHtmlPath = gwtAppPath.resolve("index.html");
                 if (Files.exists(indexHtmlPath)) {
                     String indexHtml = Files.readString(indexHtmlPath, StandardCharsets.UTF_8);
                     String assetScriptTag = "\n  <script type=\"application/json\" id=\"pwa-asset-manifest\">" + assetManifestJson + "</script>";
@@ -166,6 +183,56 @@ public final class PwaMojo extends AbstractMojo {
         return !name.startsWith(".") // ignore hidden files
                && !name.endsWith(".map") // ignore source maps
                && !name.endsWith(".txt"); // ignore text files
+    }
+
+    /**
+     * Extracts script and stylesheet references from index.html
+     * Returns paths relative to the document root (e.g., "/path/to/script.js")
+     */
+    private static Set<String> extractReferencedAssets(Path indexHtmlPath) throws IOException {
+        Set<String> assets = new LinkedHashSet<>();
+        String html = Files.readString(indexHtmlPath, StandardCharsets.UTF_8);
+
+        // Match <script src="...">
+        java.util.regex.Pattern scriptPattern = java.util.regex.Pattern.compile(
+            "<script[^>]+src=[\"']([^\"']+)[\"']",
+            java.util.regex.Pattern.CASE_INSENSITIVE
+        );
+        java.util.regex.Matcher scriptMatcher = scriptPattern.matcher(html);
+        while (scriptMatcher.find()) {
+            String src = scriptMatcher.group(1);
+            // Only include relative paths (not external URLs)
+            if (!src.startsWith("http://") && !src.startsWith("https://") && !src.startsWith("//")) {
+                // Normalize to start with / (remove leading ./ or just add /)
+                if (src.startsWith("./")) {
+                    src = src.substring(1); // Remove the dot, keep the slash
+                } else if (!src.startsWith("/")) {
+                    src = "/" + src;
+                }
+                assets.add(src);
+            }
+        }
+
+        // Match <link rel="stylesheet" href="...">
+        java.util.regex.Pattern cssPattern = java.util.regex.Pattern.compile(
+            "<link[^>]+rel=[\"']stylesheet[\"'][^>]+href=[\"']([^\"']+)[\"']|<link[^>]+href=[\"']([^\"']+)[\"'][^>]+rel=[\"']stylesheet[\"']",
+            java.util.regex.Pattern.CASE_INSENSITIVE
+        );
+        java.util.regex.Matcher cssMatcher = cssPattern.matcher(html);
+        while (cssMatcher.find()) {
+            String href = cssMatcher.group(1) != null ? cssMatcher.group(1) : cssMatcher.group(2);
+            if (href != null && !href.startsWith("http://") && !href.startsWith("https://") && !href.startsWith("//")) {
+                // Normalize to start with / (remove leading ./ or just add /)
+                if (href.startsWith("./")) {
+                    href = href.substring(1); // Remove the dot, keep the slash
+                } else if (!href.startsWith("/")) {
+                    href = "/" + href;
+                }
+                assets.add(href);
+            }
+        }
+
+        return assets;
     }
 
     private static String getStrategy(String path, Map<String, String> assetStrategies) {
