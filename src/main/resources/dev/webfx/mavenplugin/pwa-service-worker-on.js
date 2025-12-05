@@ -384,6 +384,11 @@ self.addEventListener("fetch", event => {
             if (cached) return cached;
 
             if (manifestPath === "/" || manifestPath === "/index.html") {
+                const h = PATH_TO_HASH["/index.html"] || PATH_TO_HASH["/"];
+                if (h) {
+                    const resp = await caches.match(toHashRequest(h));
+                    if (resp) return resp;
+                }
                 return (await caches.match(toScopedRequest("/index.html"))) || (await caches.match(toScopedRequest("/")));
             }
 
@@ -414,7 +419,12 @@ self.addEventListener("fetch", event => {
                 const info = HASH_TO_INFO[knownHash];
                 if (info) {
                     // This taps into the ongoing download or starts a new one with progress
-                    return getOrFetch(info.path, info);
+                    try {
+                        const res = await getOrFetch(info.path, info);
+                        if (res) return res;
+                    } catch (e) {
+                        // Ignore network errors (e.g. offline) and proceed to fallbacks
+                    }
                 }
             }
         }
@@ -445,7 +455,8 @@ self.addEventListener("fetch", event => {
             return networkResponse;
         } catch (e) {
             if (isNavLike) {
-                return (await caches.match(toScopedRequest("/index.html"))) || (await caches.match(toScopedRequest("/")));
+                const fallback = (await caches.match(toScopedRequest("/index.html"))) || (await caches.match(toScopedRequest("/")));
+                if (fallback) return fallback;
             }
             throw e;
         }

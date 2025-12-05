@@ -2,7 +2,6 @@ package dev.webfx.mavenplugin;
 
 import dev.webfx.cli.commands.CommandWorkspace;
 import dev.webfx.cli.core.DevProjectModule;
-import dev.webfx.cli.core.ProjectModule;
 import dev.webfx.cli.util.textfile.TextFileReaderWriter;
 import dev.webfx.cli.util.xml.XmlUtil;
 import dev.webfx.platform.meta.Meta;
