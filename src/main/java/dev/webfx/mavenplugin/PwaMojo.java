@@ -128,12 +128,30 @@ public final class PwaMojo extends AbstractMojo {
 
                 String assetManifestJson = toJsonAssetObject(manifestMap, assetStrategies, gwtAppPath, getLog());
 
-                String pwaManifestJson = "{\"mavenBuildTimestamp\": \"" + mavenBuildTimestamp
-                                         + "\", \"assetManifest\": " + assetManifestJson + "}";
-                TextFileReaderWriter.writeTextFileIfNewOrModified(pwaManifestJson,
-                    gwtAppPath.resolve("pwa-asset.json"));
+                // Embed asset manifest in index.html
+                Path indexHtmlPath = gwtAppPath.resolve("index.html");
+                if (Files.exists(indexHtmlPath)) {
+                    String indexHtml = Files.readString(indexHtmlPath, StandardCharsets.UTF_8);
+                    String assetScriptTag = "\n  <script type=\"application/json\" id=\"pwa-asset-manifest\">" + assetManifestJson + "</script>";
 
-                template = template.replace("const ASSET = {}", "const ASSET = " + assetManifestJson);
+                    // Insert before </head> or </body> if </head> doesn't exist
+                    if (indexHtml.contains("</head>")) {
+                        indexHtml = indexHtml.replace("</head>", assetScriptTag + "\n  </head>");
+                    } else if (indexHtml.contains("</body>")) {
+                        indexHtml = indexHtml.replace("</body>", assetScriptTag + "\n</body>");
+                    } else {
+                        // Fallback: append before </html> or at the end
+                        if (indexHtml.contains("</html>")) {
+                            indexHtml = indexHtml.replace("</html>", assetScriptTag + "\n</html>");
+                        } else {
+                            indexHtml += assetScriptTag;
+                        }
+                    }
+
+                    TextFileReaderWriter.writeTextFileIfNewOrModified(indexHtml, indexHtmlPath);
+                } else {
+                    getLog().warn("index.html not found at: " + indexHtmlPath);
+                }
             }
 
             TextFileReaderWriter.writeTextFileIfNewOrModified(template,

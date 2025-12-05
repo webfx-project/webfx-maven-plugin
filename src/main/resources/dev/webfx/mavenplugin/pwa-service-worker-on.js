@@ -5,10 +5,6 @@ console.log("PWA mode is on - mavenBuildTimestamp = " + MAVEN_BUILD_TIMESTAMP);
 const CACHE_NAME = "webfx-pwa-cache";
 const DEFAULT_PRE_CACHE = false;
 
-// Single asset map that PwaMojo will populate: { "/file1": { preCache: true|false, hash: "XXXX" }, "/file2": "YYYY", ... }
-// If preCache is missing, or the value is a string (treated as a hash), we consider preCache = DEFAULT_PRE_CACHE
-const ASSET = {};
-
 function normalizeAsset(assetLike) {
     const hashToInfo = {};
     const pathToHash = {};
@@ -34,7 +30,27 @@ function normalizeAsset(assetLike) {
     return { hashToInfo, pathToHash };
 }
 
-const { hashToInfo: HASH_TO_INFO, pathToHash: PATH_TO_HASH } = normalizeAsset(ASSET);
+// Asset maps will be initialized from index.html during install
+let HASH_TO_INFO = {};
+let PATH_TO_HASH = {};
+
+// Helper to extract asset manifest from index.html text
+function extractAssetManifest(htmlText) {
+    try {
+        const assetMatch = htmlText.match(/<script\s+type=["']application\/json["']\s+id=["']pwa-asset-manifest["']>([^<]+)<\/script>/i);
+        if (assetMatch) {
+            const assetData = JSON.parse(assetMatch[1]);
+            const { hashToInfo, pathToHash } = normalizeAsset(assetData);
+            HASH_TO_INFO = hashToInfo;
+            PATH_TO_HASH = pathToHash;
+            console.log("📦 Loaded asset manifest from index.html:", Object.keys(HASH_TO_INFO).length, "assets");
+            return true;
+        }
+    } catch (e) {
+        console.error("Failed to extract asset manifest from index.html", e);
+    }
+    return false;
+}
 
 
 // Build a cache Request for a given content hash
@@ -232,6 +248,16 @@ self.addEventListener("install", event => {
     const installPromise = (async () => {
         const cache = await caches.open(CACHE_NAME);
         await cache.addAll(['index.html', 'pwa-manifest.json']);
+
+        // Extract asset manifest from cached index.html
+        const cachedIndexHtml = await cache.match('index.html');
+        if (cachedIndexHtml) {
+            const htmlText = await cachedIndexHtml.text();
+            extractAssetManifest(htmlText);
+        } else {
+            console.warn("Could not read index.html from cache to extract asset manifest");
+        }
+
         await self.skipWaiting();
     })();
 
@@ -353,11 +379,17 @@ self.addEventListener("fetch", event => {
                         try {
                             const clonedForMeta = networkResponse.clone();
                             const text = await clonedForMeta.text();
+
+                            // Check for version changes
                             const match = text.match(/<meta\s+name=["']mavenBuildTimestamp["']\s+content=["']([^"']+)["']\s*\/?>(?:\s*<\/meta>)?/i);
                             if (match && typeof MAVEN_BUILD_TIMESTAMP !== "undefined") {
                                 const fetchedTs = match[1];
                                 if (fetchedTs !== MAVEN_BUILD_TIMESTAMP) {
                                     console.log("🔆🔆🔆🔆🔆 Detected index.html version change: fetched=" + fetchedTs + ", build=" + MAVEN_BUILD_TIMESTAMP);
+
+                                    // Extract and update asset manifest from index.html
+                                    extractAssetManifest(text);
+
                                     if (self.registration && self.registration.update) {
                                         self.registration.update().catch(() => { });
                                     }
