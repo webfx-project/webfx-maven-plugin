@@ -166,11 +166,20 @@ self.addEventListener('message', event => {
     }
 });
 
-// Helper to fetch with progress (Streaming)
-const fetchWithProgress = async (path, info) => {
+// Helper to fetch with progress (Streaming) with retry on 404
+const fetchWithProgress = async (path, info, retryCount = 0) => {
     // Resolve manifest path to absolute URL relative to scope
     const request = toScopedRequest(path);
     const response = await fetch(request, { cache: "no-cache" });
+
+    // Retry logic for 404 errors during deployment overlap
+    if (response.status === 404 && retryCount < 5) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Exponential backoff: 1s, 2s, 4s, 8s, 10s
+        console.log(`⚠️ Got 404 for ${path}, retrying in ${delay}ms (attempt ${retryCount + 1}/5)...`);
+        await new Promise(r => setTimeout(r, delay));
+        return fetchWithProgress(path, info, retryCount + 1);
+    }
+
     if (!response.ok) return response;
 
     const reader = response.body.getReader();
@@ -410,7 +419,7 @@ self.addEventListener("fetch", event => {
                 }
             } catch (eNet) { }
 
-            // Fallback to cache
+            // Fallback-to-cache
             // For index.html, we check specific keys. For nocache.js, we check request or hash.
             let cached = await caches.match(event.request);
             if (cached) return cached;
@@ -496,9 +505,22 @@ self.addEventListener("fetch", event => {
 });
 
 // Helper: fetch with a fallback retry using a reconstructed Request and no-store cache mode
-async function fetchWithRetry(request) {
+// Also retries on 404 errors (for deployment overlaps) with exponential backoff
+async function fetchWithRetry(request, retryCount = 0) {
+    const handleResponse = async (response) => {
+        // Retry on 404 during deployment overlap (load balancer routing to old server)
+        if (response.status === 404 && retryCount < 5) {
+            const delay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Exponential backoff: 1s, 2s, 4s, 8s, 10s
+            console.log(`⚠️ Got 404 for ${request.url}, retrying in ${delay}ms (attempt ${retryCount + 1}/5)...`);
+            await new Promise(r => setTimeout(r, delay));
+            return fetchWithRetry(request, retryCount + 1);
+        }
+        return response;
+    };
+
     try {
-        return await fetch(request);
+        const response = await fetch(request);
+        return handleResponse(response);
     } catch (e1) {
         try {
             const init = {
@@ -515,7 +537,8 @@ async function fetchWithRetry(request) {
                 signal: request.signal
             };
             const retryReq = new Request(request.url, init);
-            return await fetch(retryReq);
+            const response = await fetch(retryReq);
+            return handleResponse(response);
         } catch (e2) {
             throw e1;
         }
