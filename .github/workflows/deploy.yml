@@ -3,7 +3,8 @@ name: Deploy to Sonatype repository
 on:
   push:
     branches: [ main ]
-
+  workflow_dispatch:
+  
 jobs:
   deploy:
     runs-on: ubuntu-latest
