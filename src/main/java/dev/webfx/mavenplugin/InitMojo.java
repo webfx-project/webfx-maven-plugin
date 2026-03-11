@@ -66,7 +66,7 @@ public final class InitMojo extends AbstractMojo {
 	public static int init(String projectDirectory, String artifact) {
 		try {
 			CommandWorkspace workspace = new CommandWorkspace(projectDirectory);
-			Init.execute(artifact, workspace);
+			Init.execute(artifact, true, workspace);
 			return 0;
 		} catch (Exception e) {
 			Logger.log("ERROR: " + e.getMessage());
